@@ -3,6 +3,7 @@ pd.set_option('display.max_rows',None)
 pd.set_option('display.max_columns',None)
 
 import numpy as np
+from scipy.stats import pearsonr
 
 df = pd.read_csv('data/BookCrossingThemes.csv',sep=None, engine='python')
 #print(df.head())
@@ -23,9 +24,57 @@ user_id = int(input("Enter user ID: "))
 user_data = df[df['User-ID'] == user_id]
 
 if len(user_data)<= 5:
+    #Cold Start: just giving the best book according to the user's favorite category
     recommanded_category = user_data.sort_values('Book-Rating',ascending=False).iloc[0]['category']
     #print(recommanded_category)
     df_books = df.groupby('Book-Title').agg({'Book-Rating':'mean','category':list}).reset_index()
     #print(df_books.head())
     #df_books[df_books['category']==recommanded_category]
-    print(df_books[df_books['category'].apply(lambda x: recommanded_category in x)].sort_values('Book-Rating',ascending=False).iloc[0]['Book-Title'])
+    recommanded_book = df_books[df_books['category'].apply(lambda x: recommanded_category in x)].sort_values('Book-Rating',ascending=False).iloc[0]['Book-Ti11tle']
+
+if 5<len(user_data)<=20:
+    #Warm Start: we no longer look at categories, we compare users to find the most similar ones (users who
+    #give roughly the same ratings to the same books) in order to recommand a book)
+    
+    #TO DO: create a new df without the light readers
+
+    users = df['User-ID'].values
+    books = df['Book-Title'].values
+    ratings = df['Book-Rating'].values
+
+    #matrix : lines are users, columns are books
+    unique_users = np.unique(users)
+    unique_books = np.unique(books)
+
+    user_to_index = {u: i for i, u in enumerate(unique_users)}
+    book_to_index = {b: i for i, b in enumerate(unique_books)}
+
+    matrix = np.zeros((len(unique_users), len(unique_books)))
+    for u, b, r in zip(users, books, ratings):
+        i = user_to_index[u]
+        j = book_to_index[b]
+        matrix[i, j] = r
+    
+    #we evaluate similarities with pearson test
+    pearsonr_similarities = []
+
+    for i in len(matrix):
+        if i != user_to_index[user_id]:
+            corr,p_value = pearsonr(matrix[i],matrix[user_to_index[user_id]])
+            pearsonr_similarities.append((i,corr))
+
+    pearsonr_similarities = pearsonr_similarities.sort(lambda x: x[1],reverse=True)
+    similar_user = pearsonr_similarities[0][0]
+
+    #TO DO: we have the best similar user, we need to define the recommanded book
+
+
+
+
+
+
+
+    
+
+
+     
