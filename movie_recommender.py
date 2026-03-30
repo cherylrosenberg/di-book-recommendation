@@ -64,9 +64,37 @@ if 5<len(user_data)<=20:
             pearsonr_similarities.append((i,corr))
 
     pearsonr_similarities = pearsonr_similarities.sort(lambda x: x[1],reverse=True)
-    similar_user = pearsonr_similarities[0][0]
+    j= 0
+    similar_user = pearsonr_similarities[j][0]
+    i = 0
 
-    #TO DO: we have the best similar user, we need to define the recommanded book
+    #we have the best similar user, we will now define the recommanded book
+    while True:
+        if i == len(unique_books): 
+            #we have look at all the books of the actual similar user but we did not find a 
+            #match for a recommended book because he has read the exactly same books for example
+            #so we change similar_user
+            i = 0
+            j+=1
+            similar_user = pearsonr_similarities[j][0]
+            continue
+
+        elif j >= len(pearsonr_similarities):
+            recommended_book = None
+            break
+   
+        elif matrix[user_to_index[user_id]][i] == 0 and matrix[similar_user][i] >= 8:
+            recommanded_book = unique_books[i]
+            break
+
+        i+=1
+        continue
+
+
+
+
+
+
 
 
 
