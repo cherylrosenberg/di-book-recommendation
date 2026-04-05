@@ -31,8 +31,8 @@ df['Country'] = df['Location'].str.split(',').str[-1].str.strip()
 
 print(df.columns)
 
-user_id = int(input("Enter user ID: "))
-user_data = df[df['User-ID'] == user_id]
+
+
 
 
 
@@ -173,7 +173,8 @@ def recommender_for_high_users(user_data):
 
 #Clustering : category, age and location
 
-def recommender_from_cluster(user_data, n=2):
+def recommender_from_cluster(user_id, n=2):
+    user_data = df[df['User-ID'] == user_id]
     already_read = set(user_data['Book-Title'])
     recommended_books = []
 
@@ -248,7 +249,7 @@ def recommend_books(user_id):
     else:
         final_recommendations.extend(recommender_for_high_users(user_data))
 
-    cluster_books = recommender_from_cluster(user_data, n=2)
+    cluster_books = recommender_from_cluster(user_id, n=2)
 
     for book in cluster_books:
         if book not in final_recommendations:
@@ -257,4 +258,3 @@ def recommend_books(user_id):
     return final_recommendations[:3]
 
 
-print(recommend_books(user_id))
