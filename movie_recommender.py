@@ -16,8 +16,6 @@ df['Age-Group'] = pd.cut(df['Age'], bins=bins, labels=labels)
 df['Country'] = df['Location'].str.split(',').str[-1].str.strip()
 
 
-print(df[df['User-ID'] == 805])
-
 def build_rating_matrix(df: pd.DataFrame):
     # Return (matrix, unique_users, unique_books, user_to_index, book_to_index)
     users  = df['User-ID'].values
@@ -253,27 +251,29 @@ def recommender_from_cluster(user_id, n: int = 2) -> list:
 
 def recommend_books(user_id):
     user_data = df[df['User-ID'] == user_id]
-
+ 
     if user_data.empty:
         return ["User ID not found"]
-
+ 
     final_recommendations = []
-
+ 
     if len(user_data) <= 5:
         final_recommendations.extend(recommender_for_light_user(user_data))
-
+ 
     elif 5 < len(user_data) <= 20:
         final_recommendations.extend(recommender_for_medium_user(user_data))
-
+ 
     else:
         final_recommendations.extend(recommender_for_high_users(user_data))
-
-    cluster_books = recommender_from_cluster(user_id, n=2)
-
-    for book in cluster_books:
-        if book not in final_recommendations:
-            final_recommendations.append(book)
-
+ 
+    # calling this function if and only if our list isn't long enough
+    if len(final_recommendations) < 3:
+        n_missing = 3 - len(final_recommendations)
+        cluster_books = recommender_from_cluster(user_id, n=n_missing)
+        for book in cluster_books:
+            if book not in final_recommendations:
+                final_recommendations.append(book)
+ 
     return final_recommendations[:3]
 
 
