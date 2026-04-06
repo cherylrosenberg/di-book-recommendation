@@ -1,0 +1,4 @@
+pandas
+numpy
+scipy
+streamlit>=1.28.0
