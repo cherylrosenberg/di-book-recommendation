@@ -16,6 +16,8 @@ df['Age-Group'] = pd.cut(df['Age'], bins=bins, labels=labels)
 df['Country'] = df['Location'].str.split(',').str[-1].str.strip()
 
 
+print(df[df['User-ID'] == 805])
+
 def build_rating_matrix(df: pd.DataFrame):
     # Return (matrix, unique_users, unique_books, user_to_index, book_to_index)
     users  = df['User-ID'].values
@@ -39,25 +41,35 @@ matrix, unique_users, unique_books, user_to_index, book_to_index = build_rating_
 
 
 def recommender_for_light_user(user_data: pd.DataFrame) -> list:
-    # ADD THE THEME COLUMN
-    # Cold start — recommend the top-rated unread book in the user's favourite category.
+    # Cold start — recommend the top-rated unread book matching the user's favourite category AND theme.
+    # If no book matches both, fall back to category only.
     recommended_books = []
  
-    recommended_category = (
-        user_data.sort_values('Book-Rating', ascending=False)
-        .iloc[0]['primary_category']
-    )
+    best_rated_row = user_data.sort_values('Book-Rating', ascending=False).iloc[0]
+    recommended_category = best_rated_row['primary_category']
+    recommended_theme    = best_rated_row['Theme']
  
     df_books = (
         df.groupby('Book-Title')
-        .agg({'Book-Rating': 'mean', 'primary_category': list})
+        .agg({'Book-Rating': 'mean', 'primary_category': list, 'Theme': list})
         .reset_index()
     )
  
+    # First try: category AND theme
     candidate_df = (
-        df_books[df_books['primary_category'].apply(lambda x: recommended_category in x)]
+        df_books[
+            df_books['primary_category'].apply(lambda x: recommended_category in x) &
+            df_books['Theme'].apply(lambda x: recommended_theme in x)
+        ]
         .sort_values('Book-Rating', ascending=False)
     )
+ 
+    # Fallback: category only
+    if candidate_df.empty:
+        candidate_df = (
+            df_books[df_books['primary_category'].apply(lambda x: recommended_category in x)]
+            .sort_values('Book-Rating', ascending=False)
+        )
  
     already_read = set(user_data['Book-Title'])
     i = 0
@@ -68,7 +80,7 @@ def recommender_for_light_user(user_data: pd.DataFrame) -> list:
             continue
         recommended_books.append(book)
         break
- 
+
     return recommended_books
         
 
@@ -182,12 +194,17 @@ def build_cluster_assignments(df: pd.DataFrame, k: int = 6):
  
     age_df     = df.groupby('User-ID')['Age-Group'].first()
     country_df = df.groupby('User-ID')['Country'].first()
+    # Theme favori = le thème du livre le mieux noté par l'user
+    theme_df   = df.groupby('User-ID').apply(lambda x: x.loc[x['Book-Rating'].idxmax(), 'Theme'])
  
     user_profile['Age-Group'] = age_df
     user_profile = pd.get_dummies(user_profile, columns=['Age-Group'])
  
     user_profile['Country'] = country_df
     user_profile = pd.get_dummies(user_profile, columns=['Country'])
+ 
+    user_profile['Theme'] = theme_df
+    user_profile = pd.get_dummies(user_profile, columns=['Theme'])
  
     numpy_matrix       = user_profile.to_numpy(dtype=float)
     numpy_matrix_white = whiten(numpy_matrix)
@@ -200,8 +217,8 @@ def build_cluster_assignments(df: pd.DataFrame, k: int = 6):
     user_to_cluster  = {user: cluster_labels[i] for i, user in enumerate(cluster_users)}
  
     return cluster_users, cluster_labels, user_to_cluster
- 
- 
+
+
 cluster_users, cluster_labels, user_to_cluster = build_cluster_assignments(df)
 
 
@@ -227,8 +244,8 @@ def recommender_from_cluster(user_id, n: int = 2) -> list:
     for book in liked_by_cluster.index:
         if book not in already_read:
             recommended_books.append(book)
-        if len(recommended_books) == n:
-            break
+            if len(recommended_books) == n:
+                break
  
     return recommended_books
 
